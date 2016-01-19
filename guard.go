@@ -54,9 +54,10 @@ type DB struct {
 // transaction hasn't already been committed or rolled back.
 type Tx struct {
 	*sql.Tx
-	gcb      gsg.Guard
-	lock     sync.Locker
-	Name     string
+	gcb         gsg.Guard
+	lock        sync.Locker
+	Name        string
+	afterCommit []func()
 }
 
 // Begin begins a transactin, and creates a new Tx object.
@@ -68,7 +69,7 @@ func (db *DB) Begin() (*Tx, error) {
 
 	ttx := &Tx{
 		lock: &sync.Mutex{},
-		gcb:  gsg.NewCB(func() error {
+		gcb: gsg.NewCB(func() error {
 			return tx.Rollback()
 		}),
 		Tx: tx,
@@ -82,7 +83,28 @@ func (db *DB) Begin() (*Tx, error) {
 // flag being set. After calling this method, AutoRollback() is a no op
 func (tx *Tx) Commit() error {
 	defer tx.gcb.Cancel()
-	return tx.Tx.Commit()
+	if err := tx.Tx.Commit(); err != nil {
+		return err
+	}
+	defer tx.runAfterCommit()
+	return nil
+}
+
+// AddAfterCommit adds a callback that gets called only when
+// a Commit() was successful. The callbacks are executed in
+// the order that they were added. Errors are ignored.
+// If a panic occurs within one of these callbacks, execution
+// of the callbacks stop there.
+func (tx *Tx) AddAfterCommit(cb func()) {
+	tx.afterCommit = append(tx.afterCommit, cb)
+}
+
+// AfterCommit hooks do NOT report errors! be careful
+func (tx *Tx) runAfterCommit() {
+	defer recover()
+	for _, cb := range tx.afterCommit {
+		cb()
+	}
 }
 
 // Rollback sets the finished flag and then calls Rollback() on the underlying

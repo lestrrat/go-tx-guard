@@ -22,5 +22,15 @@ func TestSQLite3(t *testing.T) {
 		return
 	}
 	defer tx.AutoRollback()
+
+	afterCommitCalled := 0
+	tx.AddAfterCommit(func() {
+		afterCommitCalled++
+	})
+
 	tx.Commit()
+
+	if afterCommitCalled != 1 {
+		t.Errorf("Expected AfterCommit hook to be called once, got %d", afterCommitCalled)
+	}
 }
