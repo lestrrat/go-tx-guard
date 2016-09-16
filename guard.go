@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	gsg "github.com/lestrrat/go-simple-guard"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -55,9 +56,17 @@ type DB struct {
 type Tx struct {
 	*sql.Tx
 	gcb         gsg.Guard
-	lock        sync.Locker
+	mutex       sync.RWMutex
 	Name        string
 	afterCommit []func()
+}
+
+func Open(dn, dsn string) (*DB, error) {
+	conn, err := sql.Open(dn, dsn)
+	if err != nil {
+		return nil, errors.Wrap(err, "guard.Open")
+	}
+	return &DB{DB: conn}, nil
 }
 
 // Begin begins a transactin, and creates a new Tx object.
@@ -68,7 +77,6 @@ func (db *DB) Begin() (*Tx, error) {
 	}
 
 	ttx := &Tx{
-		lock: &sync.Mutex{},
 		gcb: gsg.NewCB(func() error {
 			return tx.Rollback()
 		}),
@@ -96,12 +104,16 @@ func (tx *Tx) Commit() error {
 // If a panic occurs within one of these callbacks, execution
 // of the callbacks stop there.
 func (tx *Tx) AddAfterCommit(cb func()) {
+	tx.mutex.Lock()
+	defer tx.mutex.Unlock()
 	tx.afterCommit = append(tx.afterCommit, cb)
 }
 
 // AfterCommit hooks do NOT report errors! be careful
 func (tx *Tx) runAfterCommit() {
 	defer recover()
+	tx.mutex.RLock()
+	defer tx.mutex.RUnlock()
 	for _, cb := range tx.afterCommit {
 		cb()
 	}

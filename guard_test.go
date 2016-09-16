@@ -1,20 +1,19 @@
-package guard
+package guard_test
 
 import (
-	"database/sql"
 	"testing"
 
+	guard "github.com/lestrrat/go-tx-guard"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // This is a silly test that doesn't do anything...
 func TestSQLite3(t *testing.T) {
-	rdb, err := sql.Open("sqlite3", ":memory:")
+	db, err := guard.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Errorf("Failed to open database: %s", err)
 		return
 	}
-	db := &DB{rdb}
 
 	tx, err := db.Begin()
 	if err != nil {
