@@ -1,16 +1,6 @@
-package guard
-
-import (
-	"database/sql"
-	"fmt"
-	"sync"
-
-	gsg "github.com/lestrrat/go-simple-guard"
-	"github.com/pkg/errors"
-)
-
 /*
-package guard implements a simple transaction guard around the
+
+Package guard implements a simple transaction guard around the
 default database/sql library. You just need to wrap the default
 database/sql handle:
 
@@ -44,29 +34,30 @@ construct:
 	}
 
 */
+package guard
 
-// DB wraps a sql.DB object.
-type DB struct {
-	*sql.DB
-}
+import (
+	"database/sql"
+	"fmt"
 
-// Tx wraps a sql.Tx object. The only difference between sql.Tx is that
-// this has an AutoRollback method, which only calls Rollback() if the
-// transaction hasn't already been committed or rolled back.
-type Tx struct {
-	*sql.Tx
-	gcb         gsg.Guard
-	mutex       sync.RWMutex
-	Name        string
-	afterCommit []func()
-}
+	gsg "github.com/lestrrat/go-simple-guard"
+	"github.com/pkg/errors"
+)
 
+// Open is just like database/sql.Open, except it wraps the resulting
+// *sql.DB object in our DB object
 func Open(dn, dsn string) (*DB, error) {
 	conn, err := sql.Open(dn, dsn)
 	if err != nil {
 		return nil, errors.Wrap(err, "guard.Open")
 	}
-	return &DB{DB: conn}, nil
+	return Wrap(conn), nil
+}
+
+// Wrap takes an existing *sql.DB object and wraps it in our
+// DB object.
+func Wrap(db *sql.DB) *DB {
+	return &DB{DB: db}
 }
 
 // Begin begins a transactin, and creates a new Tx object.
