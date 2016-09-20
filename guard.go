@@ -68,7 +68,7 @@ func (db *DB) Begin() (*Tx, error) {
 	}
 
 	ttx := &Tx{
-		gcb: gsg.NewCB(func() error {
+		gcb: gsg.Callback(func() error {
 			return tx.Rollback()
 		}),
 		Tx: tx,
