@@ -6,6 +6,11 @@ Simple database transaction guard
 
 [![GoDoc](https://godoc.org/github.com/lestrrat/go-tx-guard?status.svg)](https://godoc.org/github.com/lestrrat/go-tx-guard)
 
+
+# WARNING
+
+This repository has been moved to [github.com/lestrrat-go/tx-guard](https://github.com/lestrrat-go/tx-guard). This repository exists so that libraries pointing to this URL will keep functioning, but this repository will NOT be updated in the future. Please use the new import path.
+
 # SYNOPSIS
 
 ```go
